@@ -42,6 +42,9 @@ src/main/resources/scripts/lambda/um/node_modules
 !.mvn/wrapper/maven-wrapper.jar
 *.log
 build/*
+.mvn/
+mvnw
+mvnw.cmd
 
 
 
