@@ -5,6 +5,7 @@ package com.saptarsi.assignement.domain;
 
 import java.io.Serializable;
 import java.util.Date;
+import java.util.List;
 
 import javax.persistence.Embeddable;
 import javax.persistence.Entity;
@@ -49,6 +50,8 @@ public class DoctorMapping {
 	@Id
 	@NotNull
 	private Long dId;
+
+	private List<Long> authDId;
 
 	@CreatedDate
 	@Setter(AccessLevel.NONE)

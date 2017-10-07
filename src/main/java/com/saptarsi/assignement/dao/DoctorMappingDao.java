@@ -20,5 +20,5 @@ public interface DoctorMappingDao extends JpaRepository<DoctorMapping, Long> {
 
 	DoctorMapping getByPIdAndDId(Long pId, Long dId);
 	
-	List<DoctorMapping> getByPId(Long pId, Pageable pageable);
+	List<DoctorMapping> getByPIdAndDId(Long pId, Long dId, Pageable pageable);
 }

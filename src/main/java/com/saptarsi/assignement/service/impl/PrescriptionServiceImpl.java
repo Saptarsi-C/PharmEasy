@@ -4,6 +4,7 @@
 package com.saptarsi.assignement.service.impl;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import org.slf4j.Logger;
@@ -30,6 +31,7 @@ import com.saptarsi.assignement.token.exception.JwtExpiredException;
 import com.saptarsi.assignement.token.exception.JwtTamperedException;
 import com.saptarsi.assignement.utils.MyTokenService;
 import com.saptarsi.assignement.utils.Role;
+import com.saptarsi.assignement.utils.UserStatus;
 
 /**
  * @author saptarsichaurashy
@@ -57,13 +59,13 @@ public class PrescriptionServiceImpl implements PrescriptionService {
 
 	@Autowired
 	private DoctorMappingDao doctorMappingDao;
-	
+
 	@Autowired
 	private PharmaMappingDao pharmaMappingDao;
-	
+
 	@Autowired
 	private KeyValueRepository kvRepository;
-	
+
 	private static final CacheEntry cacheEntry = new CacheEntry("PrescriptionStore", String.class);
 
 	@Override
@@ -85,7 +87,7 @@ public class PrescriptionServiceImpl implements PrescriptionService {
 		// When patient id is not provided by the doctor or pharmacist
 		if (pId == null) {
 			User user = userDao.findByUserNameAndRole(userName, Role.PATIENT);
-			if(user == null){
+			if (user == null) {
 				log.info("No patient found for the user");
 				return null;
 			}
@@ -103,34 +105,94 @@ public class PrescriptionServiceImpl implements PrescriptionService {
 		// When a pharmacist tries to see the prescription. By default if a
 		// pharmacist is allowed, he is allowed to see all prescriptions of the
 		// patient
-		
-		if(Role.fromValue(identity.getRole()) == Role.PHARMACIST){
+
+		if (Role.fromValue(identity.getRole()) == Role.PHARMACIST) {
 			PharmaMapping pharmaMapping = pharmaMappingDao.getByUIdAndPId(pId, identity.getId());
-			if(pharmaMapping == null){
+			if (pharmaMapping == null || pharmaMapping.getStatus() == UserStatus.BLOCKED) {
 				log.info("Pharmacist is not allowed to see any prescription");
-			}
-			else{
-				User doctor = userDao.findByUserNameAndRole(token, Role.DOCTOR);
-				if(doctor == null){
+			} else {
+				User doctor = userDao.findByUserNameAndRole(docName, Role.DOCTOR);
+				if (doctor == null) {
 					log.info("No doctor found");
 					return null;
 				}
 				Long dId = doctor.getId();
 				Object prescription = kvRepository.get(cacheEntry, pId.toString(), dId.toString());
+				if(prescription == null){
+					log.info("No such prescription exists for the doctor");
+					return null;
+				}
 				log.info(prescription.toString());
 				return null;
 			}
 		}
 		// When role is doctor
-		Long docId = identity.getId();
-		DoctorMapping doctorMapping = doctorMappingDao.getByPIdAndDId(pId, docId);
-
+		// If the doctor wants to see the prescription of another doctor
+		if(docName != null){
+			User doctor = userDao.findByUserNameAndRole(docName, Role.DOCTOR);
+			if(doctor == null){
+				log.info("No doctor found by the given doctor name");
+				return null;
+			}
+			Long dId = identity.getId();
+			Long reqId = doctor.getId();
+			DoctorMapping doctorMapping = doctorMappingDao.getByPIdAndDId(pId, dId);
+			List<Long> ids = doctorMapping.getAuthDId();
+			boolean searchFlag = false;
+			for(Long id : ids){
+				if(id == reqId){
+					searchFlag = true;
+					break;
+				}
+			}
+			if(searchFlag == false){
+				log.info(identity.getUserName() + " is not authorised to view prescription of "+ docName);
+				return null;
+			}
+			Object prescription = kvRepository.get(cacheEntry, pId.toString(), reqId.toString());
+			if(prescription == null){
+				log.info("No such prescription exists for the doctor");
+				return null;
+			}
+			log.info(prescription.toString());
+			return null;
+		}
+		// By default a doctor can his his own prescription of the patient. He
+		// needs permission from the patient to see other doctors prescription
+		Object prescription = kvRepository.get(cacheEntry, pId.toString(), identity.getId().toString());
+		if(prescription == null){
+			log.info("No such prescription exists for the doctor");
+			return null;
+		}
+		log.info(prescription.toString());
 		return null;
 	}
 
 	@Override
-	public ModelAPIResponse updatePrescription(String token, Object precription) {
-		// TODO Auto-generated method stub
+	public ModelAPIResponse updatePrescription(String token, String patientName, Long pId, Object prescription) {
+		Object verifyResponse;
+		TokenFactory tokenFactory = new TokenFactory();
+		tokenFactory.setTokenType("JWT");
+		tokenFactory.setData(createJwtParams(token));
+		try {
+			verifyResponse = myTokenService.verifyToken(tokenFactory);
+		} catch (JwtTamperedException ex) {
+			return null;
+		} catch (JwtExpiredException ex) {
+			return null;
+		}
+		UserIdentity identity = gson.fromJson(verifyResponse.toString(), UserIdentity.class);
+		log.info("User Identity : {}", identity.toString());
+		if(pId == null){
+			User patient = userDao.findByUserNameAndRole(patientName, Role.PATIENT);
+			if(patient == null){
+				log.info("No patient found by the username");
+			}
+			pId = patient.getId();
+		}
+		Map<String, Object> val = new HashMap<String, Object>(2);
+		val.put(identity.getId().toString(), prescription);
+		kvRepository.put(cacheEntry, pId.toString(), val);
 		return null;
 	}
 

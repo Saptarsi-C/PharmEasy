@@ -12,5 +12,5 @@ import com.saptarsi.assignement.model.response.ModelAPIResponse;
 public interface PrescriptionService {
 
 	public ModelAPIResponse getPrescription(String token, String patientName, Long pId, String docName);
-	public ModelAPIResponse updatePrescription(String token, Object precription);
+	public ModelAPIResponse updatePrescription(String token, String patientName, Long pId, Object prescription);
 }

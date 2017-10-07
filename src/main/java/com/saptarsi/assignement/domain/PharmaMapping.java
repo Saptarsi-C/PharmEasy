@@ -45,9 +45,9 @@ public class PharmaMapping {
 
 	@Id 
 	@NotNull
-	private String uId;
+	private Long uId;
 	@NotNull
-	@Id private String pId;
+	@Id private Long pId;
 	
 	@CreatedDate
 	@Setter(AccessLevel.NONE)
