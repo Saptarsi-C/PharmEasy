@@ -7,6 +7,8 @@ import java.io.Serializable;
 
 import javax.validation.Valid;
 
+import org.hibernate.validator.constraints.NotBlank;
+
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.google.gson.annotations.Expose;
 
@@ -27,4 +29,8 @@ public class LoginRequest implements Serializable {
 	@Valid
 	@Expose
 	private UserData userData;
+	
+	@Expose
+	@NotBlank
+	private String role;
 }

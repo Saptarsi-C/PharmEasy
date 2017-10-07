@@ -4,6 +4,7 @@
 package com.saptarsi.assignement.service.impl;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import org.slf4j.Logger;
@@ -54,13 +55,15 @@ public class SignupserviceImpl implements SignupService {
 
 		String userName = signupRequest.getUserData().getUserName();
 		ModelAPIResponse modelAPIResponse;
-		User user = userDao.findByUserName(userName);
-		if (user != null) {
-			log.info("User present");
-			modelAPIResponse = new BadResponse("User Already Exists", ErrorCodes.OK);
-			return modelAPIResponse;
+		List<User> users = userDao.findByUserName(userName);
+		for(User user : users){
+			if(user.getRole() == Role.fromValue(signupRequest.getRole())){
+				log.info("User present");
+				modelAPIResponse = new BadResponse("User Already Exists", ErrorCodes.OK);
+				return modelAPIResponse;
+			}
 		}
-		user = createUserFromRequest(signupRequest);
+		User user = createUserFromRequest(signupRequest);
 		user = userDao.save(user);
 		UserIdentity userIdentity = new UserIdentity(user);
 		String token = myTokenService.createJwtToken(userIdentity);

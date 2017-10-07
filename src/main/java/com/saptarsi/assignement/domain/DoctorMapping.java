@@ -56,4 +56,7 @@ public class DoctorMapping {
 	private Date deletedOn;
 	@Enumerated(EnumType.STRING)
 	private UserStatus status;
+	
+	@NotNull
+	private Boolean enabledAll;
 }

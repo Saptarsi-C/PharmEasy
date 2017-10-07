@@ -27,11 +27,15 @@ public class UserIdentity {
 	@Expose
 	private String role;
 	
+	@Expose
+	private Long id;
+	
 	public UserIdentity(User user){
 		
-		userName = (user.getUserName());
+		userName = user.getUserName();
 		fname = user.getFname();
 		lname = user.getLname();
 		role = user.getRole().toString();
+		id = user.getId();
 	}
 }
