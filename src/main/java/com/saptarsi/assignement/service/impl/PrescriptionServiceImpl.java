@@ -10,10 +10,8 @@ import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
-import com.google.gson.Gson;
 import com.saptarsi.assignement.dao.CacheEntry;
 import com.saptarsi.assignement.dao.DoctorMappingDao;
 import com.saptarsi.assignement.dao.KeyValueRepository;
@@ -25,12 +23,8 @@ import com.saptarsi.assignement.domain.User;
 import com.saptarsi.assignement.model.UserIdentity;
 import com.saptarsi.assignement.model.response.ModelAPIResponse;
 import com.saptarsi.assignement.service.PrescriptionService;
-import com.saptarsi.assignement.token.JwtConstantParams;
-import com.saptarsi.assignement.token.TokenFactory;
-import com.saptarsi.assignement.token.exception.JwtExpiredException;
-import com.saptarsi.assignement.token.exception.JwtTamperedException;
-import com.saptarsi.assignement.utils.MyTokenService;
 import com.saptarsi.assignement.utils.Role;
+import com.saptarsi.assignement.utils.TokenToIdentityService;
 import com.saptarsi.assignement.utils.UserStatus;
 
 /**
@@ -42,17 +36,8 @@ public class PrescriptionServiceImpl implements PrescriptionService {
 
 	private final static Logger log = LoggerFactory.getLogger(PrescriptionServiceImpl.class);
 
-	@Value("${com.saptarsi.token.algo}")
-	private String ALGORITHM;
-
-	@Value("${com.saptarsi.token.key}")
-	private String KEY;
-
 	@Autowired
-	private MyTokenService myTokenService;
-
-	@Autowired
-	private Gson gson;
+	private TokenToIdentityService tokenService;
 
 	@Autowired
 	private UserDao userDao;
@@ -71,18 +56,7 @@ public class PrescriptionServiceImpl implements PrescriptionService {
 	@Override
 	public ModelAPIResponse getPrescription(String token, String userName, Long pId, String docName) {
 
-		Object verifyResponse;
-		TokenFactory tokenFactory = new TokenFactory();
-		tokenFactory.setTokenType("JWT");
-		tokenFactory.setData(createJwtParams(token));
-		try {
-			verifyResponse = myTokenService.verifyToken(tokenFactory);
-		} catch (JwtTamperedException ex) {
-			return null;
-		} catch (JwtExpiredException ex) {
-			return null;
-		}
-		UserIdentity identity = gson.fromJson(verifyResponse.toString(), UserIdentity.class);
+		UserIdentity identity = tokenService.getIdentityFromToken(token);
 		log.info("User Identity : {}", identity.toString());
 		// When patient id is not provided by the doctor or pharmacist
 		if (pId == null) {
@@ -170,18 +144,8 @@ public class PrescriptionServiceImpl implements PrescriptionService {
 
 	@Override
 	public ModelAPIResponse updatePrescription(String token, String patientName, Long pId, Object prescription) {
-		Object verifyResponse;
-		TokenFactory tokenFactory = new TokenFactory();
-		tokenFactory.setTokenType("JWT");
-		tokenFactory.setData(createJwtParams(token));
-		try {
-			verifyResponse = myTokenService.verifyToken(tokenFactory);
-		} catch (JwtTamperedException ex) {
-			return null;
-		} catch (JwtExpiredException ex) {
-			return null;
-		}
-		UserIdentity identity = gson.fromJson(verifyResponse.toString(), UserIdentity.class);
+		
+		UserIdentity identity = tokenService.getIdentityFromToken(token);
 		log.info("User Identity : {}", identity.toString());
 		if(pId == null){
 			User patient = userDao.findByUserNameAndRole(patientName, Role.PATIENT);
@@ -190,18 +154,18 @@ public class PrescriptionServiceImpl implements PrescriptionService {
 			}
 			pId = patient.getId();
 		}
+		DoctorMapping doctorMapping = doctorMappingDao.getByPIdAndDId(pId, identity.getId());
+		if(doctorMapping == null){
+			doctorMapping = new DoctorMapping();
+			doctorMapping.setPId(pId);
+			doctorMapping.setDId(identity.getId());
+			doctorMapping.setStatus(UserStatus.ACTIVE);
+			doctorMappingDao.save(doctorMapping);
+		}
 		Map<String, Object> val = new HashMap<String, Object>(2);
 		val.put(identity.getId().toString(), prescription);
 		kvRepository.put(cacheEntry, pId.toString(), val);
 		return null;
 	}
 
-	private Map<String, Object> createJwtParams(String token) {
-
-		Map<String, Object> params = new HashMap<String, Object>();
-		params.put(JwtConstantParams.JWT, token);
-		params.put(JwtConstantParams.KEY, KEY);
-		params.put(JwtConstantParams.ALGORITHM, ALGORITHM);
-		return params;
-	}
 }

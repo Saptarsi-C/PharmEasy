@@ -21,4 +21,6 @@ public interface PharmaMappingDao extends JpaRepository<PharmaMapping, Long> {
 	PharmaMapping getByUIdAndPId(Long uId, Long pId);
 
 	List<PharmaMapping> getByUId(Long pId, Pageable pageable);
+	
+	Long countByPId(long pId);
 }

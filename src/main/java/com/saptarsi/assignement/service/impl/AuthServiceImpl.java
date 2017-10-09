@@ -3,17 +3,13 @@
  */
 package com.saptarsi.assignement.service.impl;
 
-import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Map;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 
-import com.google.gson.Gson;
 import com.saptarsi.assignement.AssignmentConstant;
 import com.saptarsi.assignement.dao.DoctorMappingDao;
 import com.saptarsi.assignement.dao.PharmaMappingDao;
@@ -22,12 +18,8 @@ import com.saptarsi.assignement.domain.PharmaMapping;
 import com.saptarsi.assignement.model.UserIdentity;
 import com.saptarsi.assignement.model.response.ModelAPIResponse;
 import com.saptarsi.assignement.service.AuthService;
-import com.saptarsi.assignement.token.JwtConstantParams;
-import com.saptarsi.assignement.token.TokenFactory;
-import com.saptarsi.assignement.token.exception.JwtExpiredException;
-import com.saptarsi.assignement.token.exception.JwtTamperedException;
-import com.saptarsi.assignement.utils.MyTokenService;
 import com.saptarsi.assignement.utils.Role;
+import com.saptarsi.assignement.utils.TokenToIdentityService;
 import com.saptarsi.assignement.utils.UserStatus;
 
 /**
@@ -38,17 +30,8 @@ public class AuthServiceImpl implements AuthService {
 	
 	private final static Logger log = LoggerFactory.getLogger(AuthServiceImpl.class);
 
-	@Value("${com.saptarsi.token.algo}")
-	private String ALGORITHM;
-
-	@Value("${com.saptarsi.token.key}")
-	private String KEY;
-	
 	@Autowired
-	private MyTokenService myTokenService;
-
-	@Autowired
-	private Gson gson;
+	private TokenToIdentityService tokenService;
 
 	@Autowired
 	private DoctorMappingDao doctorMappingDao;
@@ -61,18 +44,8 @@ public class AuthServiceImpl implements AuthService {
 	 */
 	@Override
 	public ModelAPIResponse addAuthorization(String token, String reqRole, Long id, List<Long> ids) {
-		Object verifyResponse;
-		TokenFactory tokenFactory = new TokenFactory();
-		tokenFactory.setTokenType("JWT");
-		tokenFactory.setData(createJwtParams(token));
-		try {
-			verifyResponse = myTokenService.verifyToken(tokenFactory);
-		} catch (JwtTamperedException ex) {
-			return null;
-		} catch (JwtExpiredException ex) {
-			return null;
-		}
-		UserIdentity identity = gson.fromJson(verifyResponse.toString(), UserIdentity.class);
+		
+		UserIdentity identity = tokenService.getIdentityFromToken(token);
 		if(Role.fromValue(reqRole) == Role.PHARMACIST){
 			PharmaMapping pharmaMapping = pharmaMappingDao.getByUIdAndPId(identity.getId(), id);
 			if(pharmaMapping != null){
@@ -80,6 +53,11 @@ public class AuthServiceImpl implements AuthService {
 				return null;
 			}
 			pharmaMapping = getPharmaMapping(identity, id, UserStatus.ACTIVE);
+			Long count = pharmaMappingDao.countByPId(id);
+			if(count >= AssignmentConstant.MAX_PHARMACIST_LIMIT){
+				log.info("Remove some mapping. No more mapping possible");
+				return null;
+			}
 			pharmaMappingDao.save(pharmaMapping);
 			return null;
 		}
@@ -87,6 +65,11 @@ public class AuthServiceImpl implements AuthService {
 		DoctorMapping doctorMapping = doctorMappingDao.getByPIdAndDId(identity.getId(), id);
 		if(doctorMapping == null){
 			doctorMapping = getDoctorMapping(identity, id, ids, UserStatus.ACTIVE);
+			Long count = doctorMappingDao.countByPId(id);
+			if(count >= AssignmentConstant.MAX_DOCTOR_LIMIT){
+				log.info("Remove some mapping. No more mapping possible");
+				return null;
+			}
 			doctorMappingDao.save(doctorMapping);
 			return null;
 		}
@@ -112,18 +95,7 @@ public class AuthServiceImpl implements AuthService {
 	@Override
 	public ModelAPIResponse removeAuthorization(String token, String reqRole, Long id, List<Long> ids) {
 		
-		Object verifyResponse;
-		TokenFactory tokenFactory = new TokenFactory();
-		tokenFactory.setTokenType("JWT");
-		tokenFactory.setData(createJwtParams(token));
-		try {
-			verifyResponse = myTokenService.verifyToken(tokenFactory);
-		} catch (JwtTamperedException ex) {
-			return null;
-		} catch (JwtExpiredException ex) {
-			return null;
-		}
-		UserIdentity identity = gson.fromJson(verifyResponse.toString(), UserIdentity.class);
+		UserIdentity identity = tokenService.getIdentityFromToken(token);
 		if(Role.fromValue(reqRole) == Role.PHARMACIST){
 			PharmaMapping pharmaMapping = pharmaMappingDao.getByUIdAndPId(identity.getId(), id);
 			if(pharmaMapping == null){
@@ -159,15 +131,6 @@ public class AuthServiceImpl implements AuthService {
 	public ModelAPIResponse removeFullAuthorization(String token, String reqRole, Long id) {
 		// TODO Auto-generated method stub
 		return null;
-	}
-	
-	private Map<String, Object> createJwtParams(String token) {
-
-		Map<String, Object> params = new HashMap<String, Object>();
-		params.put(JwtConstantParams.JWT, token);
-		params.put(JwtConstantParams.KEY, KEY);
-		params.put(JwtConstantParams.ALGORITHM, ALGORITHM);
-		return params;
 	}
 
 	private PharmaMapping getPharmaMapping(UserIdentity identity, Long id, UserStatus userStatus){
