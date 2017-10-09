@@ -1,7 +1,7 @@
 /**
  * 
  */
-package com.saptarsi.assignement.reaponse;
+package com.saptarsi.assignement.response;
 
 import java.util.Map;
 

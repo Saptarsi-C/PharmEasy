@@ -104,7 +104,7 @@ public class RegisteredListServiceImpl implements RegisteredListService {
 
 	/* (non-Javadoc)
 	 * @see com.saptarsi.assignement.service.RegisteredListService#getDoctorRegisterdList()
-	 * This will give me the list of doctors whose prescription the current doctor is authorised to see 
+	 * This will give me the list of doctors whose prescription the current doctor is authorized to see 
 	 */
 	@Override
 	public ModelAPIResponse getDoctorRegisterdList(String token, Long docId) {

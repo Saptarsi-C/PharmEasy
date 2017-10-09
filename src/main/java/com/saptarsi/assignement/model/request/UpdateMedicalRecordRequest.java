@@ -5,10 +5,6 @@ package com.saptarsi.assignement.model.request;
 
 import java.io.Serializable;
 
-import javax.validation.constraints.NotNull;
-
-import com.google.gson.annotations.Expose;
-
 import lombok.Data;
 
 /**
@@ -16,16 +12,12 @@ import lombok.Data;
  *
  */
 @Data
-public class UpdatePrescriptionRequest implements Serializable {
-	
+public class UpdateMedicalRecordRequest implements Serializable {
+
 	/**
 	 * 
 	 */
 	private static final long serialVersionUID = 1L;
-
-	@Expose
-	@NotNull
-	private Serializable data;
-	
+	private Serializable updateMedicalInfo;
 
 }
