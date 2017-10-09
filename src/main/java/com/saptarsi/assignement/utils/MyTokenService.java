@@ -34,13 +34,13 @@ public class MyTokenService implements TokenizationService {
 	@Autowired
 	private TokenizationService tokenizationService;
 	
-	@Value("${com.hotstar.token.algo}")
+	@Value("${com.saptarsi.token.algo}")
 	private String ALGORITHM;
 	
-	@Value("${com.hotstar.token.key}")
+	@Value("${com.saptarsi.token.key}")
 	private String KEY ;
 	
-	@Value("${com.hotstar.token.ttlmillis}")
+	@Value("${com.saptarsi.token.ttlmillis}")
 	private String tokenTtlMillis;
 	
 	public String createJwtToken(UserIdentity userIdentity){

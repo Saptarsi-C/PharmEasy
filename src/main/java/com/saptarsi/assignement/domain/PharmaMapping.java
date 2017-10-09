@@ -6,11 +6,13 @@ package com.saptarsi.assignement.domain;
 import java.io.Serializable;
 import java.util.Date;
 
+import javax.persistence.Basic;
 import javax.persistence.Embeddable;
 import javax.persistence.Entity;
 import javax.persistence.EntityListeners;
 import javax.persistence.EnumType;
 import javax.persistence.Enumerated;
+import javax.persistence.FetchType;
 import javax.persistence.Id;
 import javax.persistence.IdClass;
 import javax.validation.constraints.NotNull;
@@ -45,8 +47,10 @@ public class PharmaMapping {
 
 	@Id 
 	@NotNull
+	@Basic(fetch = FetchType.LAZY)
 	private Long uId;
 	@NotNull
+	@Basic(fetch = FetchType.LAZY)
 	@Id private Long pId;
 	
 	@CreatedDate
